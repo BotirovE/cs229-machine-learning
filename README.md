@@ -1,2 +1,5 @@
-# linear-regression
-CS229-L2: Implementation of Linear Regression with Gradient Descent to minimize cost function.
+# Implementation of algorithms covered in the course [CS229](https://www.youtube.com/playlist?list=PLoROMvodv4rMiGQp3WXShtMGgzqpfVfbU)
+
+## Covered topics:
+
+- Lecture 2: Linear Regression and Gradient Descent
