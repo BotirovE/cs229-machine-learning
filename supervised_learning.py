@@ -1,3 +1,8 @@
+from numpy import array
+from numpy.linalg import inv
+from random import randint
+
+
 class LinearRegression:
     """
     Linear Regression with Gradient Descent to minimize cost function
@@ -12,7 +17,7 @@ class LinearRegression:
         features of training set
     outputs: m-sized list
         outputs of training set
-    parameters: (n+1)-sized list
+    parameters: (n)-sized list
         parameters of linear regression
 
     Methods
@@ -21,7 +26,7 @@ class LinearRegression:
         predicts output for given features based on calculated parameters
     """
 
-    def __init__(self, features: list, outputs: list, learning_rate=0.01, gd_type='batch'):
+    def __init__(self, features: list, outputs: list, learning_rate=0.01, learning_algorithm='bgd'):
         """
         Parameters
         ----------
@@ -31,55 +36,59 @@ class LinearRegression:
             outputs of training set
         learning_rate: float between 0 and 1, optional
             rate of minizing cost function
-        gd_type: string
-            gradient descent type (batch|stochastic)
+        learning_algorithm: string
+            learning algorithm type (bgd|sgd|ma)
         """
         self.features = features
+        for feature in self.features:
+            feature.append(1)  # constant feature
         self.outputs = outputs
         self.learning_rate = learning_rate
 
         self.m = len(features)
         self.n = len(features[0])
-        self.parameters = [0]*(self.n+1)  # last parameter for constant feature
-        assert gd_type in ('batch', 'stochastic')
-        if gd_type == 'batch':
-            self.__batch_gradient_descent
-        elif gd_type == 'stochastic':
-            self.__stochastic_gradient_descent
+        self.parameters = [0]*(self.n)
+        assert learning_algorithm in ('bgd', 'sgd', 'ma')
+        if learning_algorithm == 'bgd':
+            self.__batch_gradient_descent()
+        elif learning_algorithm == 'sgd':
+            self.__stochastic_gradient_descent()
+        elif learning_algorithm == 'ma':
+            self.__matrix_approach()
         print("Learned parameters:", self.parameters)
 
     def __batch_gradient_descent(self):
         """Alters parameters to minimize cost"""
-        for _ in range(1e7):
-            J_derivative_sum = 0
+        for _ in range(int(1e3)):
+            total_cost = 0
             for j in range(self.n):
-                J_derivative = 0  # derivative of cost function
+                marginal_cost = 0  # derivative of cost function
                 for i in range(self.m):
-                    J_derivative += (self.predict(
+                    marginal_cost += (self.predict(
                         self.features[i]) - self.outputs[i])*self.features[i][j]
-                self.parameters[j] -= self.learning_rate * J_derivative
-                J_derivative_sum += abs(J_derivative)
-            # parameter of constant feature
-            J_derivative = sum([(self.predict(self.features[i]) - self.outputs[i])
-                                for i in range(self.m)])
-            self.parameters[self.n] -= self.learning_rate * J_derivative
-            J_derivative_sum += abs(J_derivative)
+                    print(marginal_cost)
+                self.parameters[j] -= self.learning_rate * marginal_cost
+                total_cost += abs(marginal_cost)
             # break when local minimum is found
-            if J_derivative_sum < 1e-10:
+            if total_cost < 1e-5:
                 break
 
     def __stochastic_gradient_descent(self):
         """Alters parameters to minimize cost"""
-        for _ in range(1e7):
+        for _ in range(int(1e3)):
             for i in range(self.m):
                 for j in range(self.n):
-                    J_derivative = (self.predict(
+                    marginal_cost = (self.predict(
                         self.features[i]) - self.outputs[i])*self.features[i][j]
-                    self.parameters[j] -= self.learning_rate * J_derivative
-                # parameter of constant feature
-                J_derivative = self.predict(self.features[i]) - self.outputs[i]
-                self.parameters[self.n] -= self.learning_rate * J_derivative
+                    self.parameters[j] -= self.learning_rate * marginal_cost
             # TODO: implement termination condition
+
+    def __matrix_approach(self):
+        """Matrix approach to simple linear regression"""
+        X = array(self.features)
+        y = array(self.outputs)
+        # linear least squares
+        self.parameters = list(inv(X.T.dot(X)).dot(X.T).dot(y))
 
     def predict(self, features: list) -> float:
         """
@@ -95,25 +104,37 @@ class LinearRegression:
         float
             predicted output
         """
-        prediction = self.parameters[-1]  # parameter of constant feature
-        for j in range(len(features)):
-            prediction += self.parameters[j] * features[j]
+        prediction = 0
+        x = features.copy()
+        if len(x) == len(self.parameters)-1:
+            x.append(1)
+        for j in range(len(x)):
+            prediction += self.parameters[j] * x[j]
 
         return prediction
 
 
 if __name__ == "__main__":
     # inputs/features x is a m*n array
-    x = [[1, 2],
-         [2, 3],
-         [3, 4],
-         [4, 5]]
     # output/target value y is an array with size of n
-    # y = x1 + 2 * x2 + 3
-    y = [1+2*2+3,
-         2+3*2+3,
-         3+4*2+3,
-         4+5*2+3]
-    regression = LinearRegression(x, y)
+    x, y = [], []
+
+    def sample_function(x1, x2):
+        return x1 + 2*x2 + 3
+
+    for _ in range(10):
+        x1 = randint(-9999, 9999)
+        x2 = randint(-9999, 9999)
+        x.append([x1, x2])
+        # y = x1 + 2 * x2 + 3
+        y.append(sample_function(x1, x2))
+
+    regression = LinearRegression(
+        x, y, learning_rate=0.01, learning_algorithm='bgd')
+    x1 = randint(-9999, 9999)
+    print("x1:", x1)
+    x2 = randint(-9999, 9999)
+    print("x2:", x2)
+    print("Expected output:", sample_function(x1, x2))
     # expected result is y = 5 + 2 * 6 + 3 = 20
-    print(regression.predict([5, 6]))
+    print("Predicted output:", regression.predict([x1, x2]))
